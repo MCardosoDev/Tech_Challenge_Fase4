@@ -1,5 +1,4 @@
 import streamlit as st
-import plotly.graph_objects as go
 from utils import (
     DataExtractor,
     Loader,
@@ -639,16 +638,16 @@ def main():
     if user_menu == 'Resultados':
         pass
         # MSTL_forecast = MSTL_model.predict(h=30, level=[95])
-        # MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        # MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         # # MSTL_forecast.dropna(inplace=True)
 
         # SeasESOpt_forecast = SeasESOpt_model.predict(h=30, level=[95])
-        # SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        # SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         # # SeasESOpt_forecast.dropna(inplace=True)
 
         # fig = go.Figure()
-        # fig.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y_y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        # fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
         # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
@@ -689,8 +688,8 @@ def main():
         # st.plotly_chart(fig, style = style, use_container_width=True)
 
         # fig2 = go.Figure()
-        # fig2.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y_y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        # fig2.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        # fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         # fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         # fig2.update_layout(
         #     xaxis_title='Data',

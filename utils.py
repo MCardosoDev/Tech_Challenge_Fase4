@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import numpy as np
-import pickle
+import joblib
 from scipy.stats import boxcox
 from datetime import datetime
 import plotly.express as px
@@ -343,11 +343,12 @@ class Preparation:
         dataset['y'] = df_diff
 
         dataset = pd.merge(df_diff, df_trans, left_index=True, right_index=True, how='left')
+        dataset.rename(columns={'y_y': 'y'}, inplace=True)
         
         while dataset.isnull().any().any():
             for column in dataset.columns:
                 if dataset[column].isnull().any():
-                    dataset = fill_nulls.rolling_mean(dataset, index='Data', column_ds='ds', column_y='y_y')
+                    dataset = fill_nulls.rolling_mean(dataset, index='Data', column_ds='ds', column_y='y')
 
 
         train = dataset.loc[dataset.ds < '2023-11-01']
@@ -371,23 +372,23 @@ class Error:
 class Models:
     def mstl(self, train, test, valid):
         with open('MTS', 'rb') as model_file:
-            MSTL_model = pickle.load(model_file)
+            MSTL_model = joblib.load(model_file)
         
         erro = Error()
         # with open('SeasonalExponentialSmoothingOptimized', 'rb') as model_file:
-        #     SeasESOpt_model = pickle.load(model_file)
+        #     SeasESOpt_model = joblib.load(model_file)
 
         MSTL_forecast = MSTL_model.predict(h=30, level=[95])
-        MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         MSTL_forecast.dropna(inplace=True)
 
         MSTL_forecast_valid = MSTL_model.predict(h=55, level=[95])
-        MSTL_forecast_valid = MSTL_forecast_valid.reset_index().merge(valid[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        MSTL_forecast_valid = MSTL_forecast_valid.reset_index().merge(valid[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         MSTL_forecast_valid.dropna(inplace=True)
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y_y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
@@ -426,7 +427,7 @@ class Models:
         )
         
         fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['y_y'], mode='lines', name='Dados de  Validação (2023-08-16 a 2023-08-25)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['y'], mode='lines', name='Dados de  Validação (2023-08-16 a 2023-08-25)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
@@ -448,25 +449,25 @@ class Models:
         )
        
         
-        return fig, erro.wmape(MSTL_forecast['y_y'].values, MSTL_forecast['MSTL'].values), fig1, erro.wmape(MSTL_forecast_valid['y_y'].values, MSTL_forecast_valid['MSTL'].values)
+        return fig, erro.wmape(MSTL_forecast['y'].values, MSTL_forecast['MSTL'].values), fig1, erro.wmape(MSTL_forecast_valid['y'].values, MSTL_forecast_valid['MSTL'].values)
     
     def seas_es_opt(self, train, test, valid):
         with open('SeasonalExponentialSmoothingOptimized', 'rb') as model_file:
-            SeasESOpt_model = pickle.load(model_file)
+            SeasESOpt_model = joblib.load(model_file)
         
         erro = Error()
 
-        SeasESOpt_forecast = SeasESOpt_model.predict(h=30, level=[95])
-        SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        SeasESOpt_forecast = SeasESOpt_model.predict(h=30)
+        SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         SeasESOpt_forecast.dropna(inplace=True)
 
-        SeasESOpt_forecast_valid = SeasESOpt_model.predict(h=55, level=[95])
-        SeasESOpt_forecast_valid = SeasESOpt_forecast_valid.reset_index().merge(valid[['ds', 'y_y', 'unique_id']], on=['ds', 'unique_id'], how='left')
+        SeasESOpt_forecast_valid = SeasESOpt_model.predict(h=55)
+        SeasESOpt_forecast_valid = SeasESOpt_forecast_valid.reset_index().merge(valid[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         SeasESOpt_forecast_valid.dropna(inplace=True)
 
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y_y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig2.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig2.update_layout(
             xaxis_title='Data',
@@ -492,7 +493,7 @@ class Models:
         )
 
         fig3 = go.Figure()
-        fig3.add_trace(go.Scatter(x=SeasESOpt_forecast_valid['ds'], y=SeasESOpt_forecast_valid['y_y'], mode='lines', name='Dados de  Validação (2023-12-01 - 2023-12-31)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig3.add_trace(go.Scatter(x=SeasESOpt_forecast_valid['ds'], y=SeasESOpt_forecast_valid['y'], mode='lines', name='Dados de  Validação (2023-12-01 - 2023-12-31)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig3.add_trace(go.Scatter(x=SeasESOpt_forecast_valid['ds'], y=SeasESOpt_forecast_valid['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig3.update_layout(
             xaxis_title='Data',
@@ -500,17 +501,17 @@ class Models:
             xaxis=dict(tickformat='%Y-%m-%d')
         )
 
-        return fig2, erro.wmape(SeasESOpt_forecast['y_y'].values, SeasESOpt_forecast['SeasESOpt'].values), fig3, erro.wmape(SeasESOpt_forecast_valid['y_y'].values, SeasESOpt_forecast_valid['SeasESOpt'].values)
+        return fig2, erro.wmape(SeasESOpt_forecast['y'].values, SeasESOpt_forecast['SeasESOpt'].values), fig3, erro.wmape(SeasESOpt_forecast_valid['y'].values, SeasESOpt_forecast_valid['SeasESOpt'].values)
     
 class BestModel:
     def mstl(self, train, h):
         with open('MTS', 'rb') as model_file:
-            MSTL_model = pickle.load(model_file)
+            MSTL_model = joblib.load(model_file)
         
         MSTL_forecast = MSTL_model.predict(h=85 + h, level=[95])
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.update_layout(
             xaxis_title='Data',
@@ -538,12 +539,12 @@ class BestModel:
 
     def seas_es_opt(self, train, h):
         with open('SeasonalExponentialSmoothingOptimized', 'rb') as model_file:
-            SeasESOpt_model = pickle.load(model_file)
+            SeasESOpt_model = joblib.load(model_file)
 
-        SeasESOpt_forecast = SeasESOpt_model.predict(h=85 + h, level=[95])
+        SeasESOpt_forecast = SeasESOpt_model.predict(h=85 + h)
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y_y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
         fig.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.update_layout(
             xaxis_title='Data',
