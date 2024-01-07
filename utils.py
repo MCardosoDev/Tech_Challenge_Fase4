@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import joblib
 from scipy.stats import boxcox
-from datetime import datetime
+from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.subplots as sp
 import plotly.graph_objs as go
@@ -12,6 +12,9 @@ import matplotlib.pyplot as plt
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.stattools import adfuller, acf, pacf
+from statsforecast import StatsForecast
+from statsforecast.models import SeasonalExponentialSmoothingOptimized, MSTL, AutoETS
+
 
 class DataExtractor:
     def __init__(self, url = "http://www.ipeadata.gov.br/ExibeSerie.aspx?module=m&serid=1650971490&oper=view"):
@@ -350,10 +353,14 @@ class Preparation:
                 if dataset[column].isnull().any():
                     dataset = fill_nulls.rolling_mean(dataset, index='Data', column_ds='ds', column_y='y')
 
+        latest_date = max(dataset['ds'])
 
-        train = dataset.loc[dataset.ds < '2023-11-01']
-        test = dataset.loc[(dataset.ds >= '2023-11-01') & (dataset.ds < '2023-12-01')]
-        valid = dataset.loc[dataset.ds >= '2023-12-01']
+        test_end_date = latest_date - timedelta(days=7)
+        train_end_date = test_end_date - timedelta(days=15)
+
+        train = dataset.loc[dataset['ds'] < train_end_date]
+        test = dataset.loc[(dataset['ds'] >= train_end_date) & (dataset['ds'] < test_end_date)]
+        valid = dataset.loc[dataset['ds'] >= test_end_date]
 
         pd.options.mode.chained_assignment = None
         train.loc[:, 'unique_id'] = 'Brent'
@@ -369,26 +376,54 @@ class Error:
         wmape = np.abs(y_true - y_pred).sum() / np.abs(y_true).sum()
         return wmape
     
+class FitModels:
+    def fit(self, train):
+        SeasESOpt_model = StatsForecast(models=[SeasonalExponentialSmoothingOptimized(season_length=180)], freq='D', n_jobs=-1)
+        SeasESOpt_model.fit(train[['ds', 'y', 'unique_id']])
+
+        MSTL_model = StatsForecast([MSTL(season_length=[180, 365], trend_forecaster=AutoETS(model='ZZN'))], freq='D', n_jobs=-1)
+        MSTL_model.fit(train[['ds', 'y', 'unique_id']])
+
+        with open('SeasonalExponentialSmoothingOptimized', 'wb') as output:
+            joblib.dump(SeasESOpt_model, output)
+
+        with open('MTS', 'wb') as output:
+            joblib.dump(MSTL_model, output)
+
 class Models:
     def mstl(self, train, test, valid):
         with open('MTS', 'rb') as model_file:
             MSTL_model = joblib.load(model_file)
         
         erro = Error()
-        # with open('SeasonalExponentialSmoothingOptimized', 'rb') as model_file:
-        #     SeasESOpt_model = joblib.load(model_file)
 
-        MSTL_forecast = MSTL_model.predict(h=30, level=[95])
+        num_dates_test = test.shape[0]
+        num_dates_valid = valid.shape[0]
+        pre_dates = num_dates_test + num_dates_valid
+
+        MSTL_forecast = MSTL_model.predict(h=num_dates_test, level=[95])
         MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         MSTL_forecast.dropna(inplace=True)
 
-        MSTL_forecast_valid = MSTL_model.predict(h=55, level=[95])
+        MSTL_forecast_valid = MSTL_model.predict(h=pre_dates, level=[95])
         MSTL_forecast_valid = MSTL_forecast_valid.reset_index().merge(valid[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         MSTL_forecast_valid.dropna(inplace=True)
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(
+            x=train['ds'], 
+            y=train['y'], 
+            mode='lines', 
+            name=f"Dados de Treinamento ({pd.to_datetime(train['ds'].min()).date()} - "f"{pd.to_datetime(train['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
+        fig.add_trace(go.Scatter(
+            x=MSTL_forecast['ds'], 
+            y=MSTL_forecast['y'], 
+            mode='lines', 
+            name=f"Dados de Teste ({pd.to_datetime(test['ds'].min()).date()} - "f"{pd.to_datetime(test['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
@@ -399,14 +434,14 @@ class Models:
         )
         fig.add_shape(
             type='line',
-            x0='2023-11-01',
-            x1='2023-11-01',
+            x0=train['ds'].max(),
+            x1=train['ds'].max(),
             y0=10,
             y1=140,
             line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
         )
         fig.add_annotation(
-            x='2023-11-01',
+            x=train['ds'].max(),
             y=110,
             text='First Forecast',
             showarrow=False
@@ -423,11 +458,17 @@ class Models:
             )
         )
         fig.update_xaxes(
-            range=['2020-01-01', MSTL_forecast['ds'].max()]
+            range=['2023-01-01', MSTL_forecast['ds'].max()]
         )
         
         fig1 = go.Figure()
-        fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['y'], mode='lines', name='Dados de  Validação (2023-08-16 a 2023-08-25)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig1.add_trace(go.Scatter(
+            x=MSTL_forecast_valid['ds'], 
+            y=MSTL_forecast_valid['y'], 
+            mode='lines', 
+            name=f"Dados de Validação ({pd.to_datetime(valid['ds'].min()).date()} - "f"{pd.to_datetime(valid['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
         fig1.add_trace(go.Scatter(x=MSTL_forecast_valid['ds'], y=MSTL_forecast_valid['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
@@ -447,7 +488,7 @@ class Models:
                 showlegend=False
             )
         )
-        fig1.update_yaxes(range=[50, 120])
+        fig1.update_yaxes(range=[50, 140])
         
         return fig, erro.wmape(MSTL_forecast['y'].values, MSTL_forecast['MSTL'].values), fig1, erro.wmape(MSTL_forecast_valid['y'].values, MSTL_forecast_valid['MSTL'].values)
     
@@ -457,17 +498,33 @@ class Models:
         
         erro = Error()
 
-        SeasESOpt_forecast = SeasESOpt_model.predict(h=30)
+        num_dates_test = test.shape[0]
+        num_dates_valid = valid.shape[0]
+        pre_dates = num_dates_test + num_dates_valid
+
+        SeasESOpt_forecast = SeasESOpt_model.predict(h=num_dates_test)
         SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         SeasESOpt_forecast.dropna(inplace=True)
 
-        SeasESOpt_forecast_valid = SeasESOpt_model.predict(h=55)
+        SeasESOpt_forecast_valid = SeasESOpt_model.predict(h=pre_dates)
         SeasESOpt_forecast_valid = SeasESOpt_forecast_valid.reset_index().merge(valid[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
         SeasESOpt_forecast_valid.dropna(inplace=True)
 
         fig2 = go.Figure()
-        fig2.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig2.add_trace(go.Scatter(
+            x=train['ds'], 
+            y=train['y'], 
+            mode='lines', 
+            name=f"Dados de Treinamento ({pd.to_datetime(train['ds'].min()).date()} - "f"{pd.to_datetime(train['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
+        fig2.add_trace(go.Scatter(
+            x=SeasESOpt_forecast['ds'], 
+            y=SeasESOpt_forecast['y'], 
+            mode='lines', 
+            name=f"Dados de Teste ({pd.to_datetime(test['ds'].min()).date()} - "f"{pd.to_datetime(test['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig2.update_layout(
             xaxis_title='Data',
@@ -476,43 +533,57 @@ class Models:
         )
         fig2.add_shape(
             type='line',
-            x0='2023-11-01',
-            x1='2023-11-01',
+            x0=train['ds'].max(),
+            x1=train['ds'].max(),
             y0=10,
             y1=140,
             line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
         )
         fig2.add_annotation(
-            x='2023-11-01',
+            x=train['ds'].max(),
             y=100,
             text='First Forecast',
             showarrow=False
         )
         fig2.update_xaxes(
-            range=['2020-01-01', SeasESOpt_forecast['ds'].max()]
+            range=['2023-01-01', SeasESOpt_forecast['ds'].max()]
         )
 
         fig3 = go.Figure()
-        fig3.add_trace(go.Scatter(x=SeasESOpt_forecast_valid['ds'], y=SeasESOpt_forecast_valid['y'], mode='lines', name='Dados de  Validação (2023-12-01 - 2023-12-31)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig3.add_trace(go.Scatter(
+            x=SeasESOpt_forecast_valid['ds'], 
+            y=SeasESOpt_forecast_valid['y'], 
+            mode='lines', 
+            name=f"Dados de Validação ({pd.to_datetime(valid['ds'].min()).date()} - "f"{pd.to_datetime(valid['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig3.add_trace(go.Scatter(x=SeasESOpt_forecast_valid['ds'], y=SeasESOpt_forecast_valid['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig3.update_layout(
             xaxis_title='Data',
             legend=dict(x=0, y=1),
             xaxis=dict(tickformat='%Y-%m-%d')
         )
-        fig3.update_yaxes(range=[60, 90])
+        fig3.update_yaxes(range=[50, 140])
 
         return fig2, erro.wmape(SeasESOpt_forecast['y'].values, SeasESOpt_forecast['SeasESOpt'].values), fig3, erro.wmape(SeasESOpt_forecast_valid['y'].values, SeasESOpt_forecast_valid['SeasESOpt'].values)
     
 class BestModel:
-    def mstl(self, train, h):
+    def mstl(self, train, test, valid, h):
         with open('MTS', 'rb') as model_file:
             MSTL_model = joblib.load(model_file)
-        
-        MSTL_forecast = MSTL_model.predict(h=85 + h, level=[95])
+
+        pre_dates = test.shape[0] + valid.shape[0]
+
+        MSTL_forecast = MSTL_model.predict(h=pre_dates + h, level=[95])
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(
+            x=train['ds'],
+            y=train['y'], 
+            mode='lines', 
+            name=f"Dados de Treinamento ({pd.to_datetime(train['ds'].min()).date()} - "f"{pd.to_datetime(train['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.update_layout(
             xaxis_title='Data',
@@ -521,31 +592,41 @@ class BestModel:
         )
         fig.add_shape(
             type='line',
-            x0='2023-11-01',
-            x1='2023-11-01',
+            x0=train['ds'].max(),
+            x1=train['ds'].max(),
             y0=10,
             y1=140,
             line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
         )
         fig.add_annotation(
-            x='2023-11-01',
+            x=train['ds'].max(),
             y=110,
             text='First Forecast',
             showarrow=False
         )
         fig.update_xaxes(
-            range=['2020-01-01', MSTL_forecast['ds'].max()]
+            range=['2023-01-01', MSTL_forecast['ds'].max()]
         )
         return fig
 
-    def seas_es_opt(self, train, h):
+    def seas_es_opt(self, train, test, valid, h):
         with open('SeasonalExponentialSmoothingOptimized', 'rb') as model_file:
             SeasESOpt_model = joblib.load(model_file)
 
-        SeasESOpt_forecast = SeasESOpt_model.predict(h=85 + h)
+        num_dates_test = test.shape[0]
+        num_dates_valid = valid.shape[0]
+        pre_dates = num_dates_test + num_dates_valid
+
+        SeasESOpt_forecast = SeasESOpt_model.predict(h=pre_dates + h)
 
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
+        fig.add_trace(go.Scatter(
+            x=train['ds'], 
+            y=train['y'], 
+            mode='lines', 
+            name=f"Dados de Treinamento ({pd.to_datetime(train['ds'].min()).date()} - "f"{pd.to_datetime(train['ds'].max()).date()})", 
+            line=dict(color='rgba(0, 255, 0, 0.8)')
+            ))
         fig.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
         fig.update_layout(
             xaxis_title='Data',
@@ -554,20 +635,20 @@ class BestModel:
         )
         fig.add_shape(
             type='line',
-            x0='2023-11-01',
-            x1='2023-11-01',
+            x0=train['ds'].max(),
+            x1=train['ds'].max(),
             y0=10,
             y1=140,
             line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
         )
         fig.add_annotation(
-            x='2023-11-01',
+            x=train['ds'].max(),
             y=100,
             text='First Forecast',
             showarrow=False
         )
         fig.update_xaxes(
-            range=['2020-01-01', SeasESOpt_forecast['ds'].max()]
+            range=['2023-01-01', SeasESOpt_forecast['ds'].max()]
         )
 
         return fig

@@ -9,7 +9,8 @@ from utils import (
     Differentiation,
     Preparation,
     Models,
-    BestModel
+    BestModel,
+    FitModels
 )
 
 def main():
@@ -43,6 +44,7 @@ def main():
     prep = Preparation()
     best_model = BestModel()
     model = Models()
+    fit = FitModels()
     extract.extract_data()
     dados = load.load_data()
     dados_tans = load.load_data_trans()
@@ -60,6 +62,8 @@ def main():
     train = load.load_data_train()
     test = load.load_data_test()
     valid = load.load_data_valid()
+
+    fit.fit(train)
     
     if user_menu == 'Geral':
         pass
@@ -190,6 +194,7 @@ def main():
                 train = load.load_data_train()
                 test = load.load_data_test()
                 valid = load.load_data_valid()
+                fit.fit(train)
 
                 st.success('Dados atualizados com sucesso.')
         
@@ -309,7 +314,7 @@ def main():
         st.code(code, language='python')
         st.markdown('***')
         st.markdown("<h4 style='text-align:center; width: 100%;'>Ao analisar os dados agora nota-se que não se mais dados ausentes.</h4>", unsafe_allow_html=True)
-        st.dataframe(dados_tans.head(10), use_container_width=True)
+        st.dataframe(dados_tans.tail(10), use_container_width=True)
         
 
     if user_menu == 'Transformação da Série':
@@ -558,11 +563,16 @@ def main():
         
         st.markdown('***')
         st.markdown("<h5 style='text-align:center; width: 100%;'>Os períodos para treinar, testar e validar foram:</h5>", unsafe_allow_html=True)
-        st.code('''
-                train = dataset.loc[dataset.ds < '2023-11-01']
-                test = dataset.loc[(dataset.ds >= '2023-11-01') & (dataset.ds < '2023-12-01')]
-                valid = dataset.loc[dataset.ds >= '2023-12-01']
-                '''
+        st.code("""
+                latest_date = max(dataset['ds'])
+
+                train_end_date = latest_date - timedelta(days=15)
+                test_end_date = latest_date - timedelta(days=7)
+
+                train = dataset.loc[dataset['ds'] < train_end_date]
+                test = dataset.loc[(dataset['ds'] >= train_end_date) & (dataset['ds'] < test_end_date)]
+                valid = dataset.loc[dataset['ds'] >= test_end_date]
+                """
         )
 
         st.markdown('***')
@@ -640,11 +650,11 @@ def main():
         st.markdown("<h3 style='text-align:center; width: 100%;'>Resultado do Challenge</h3>", unsafe_allow_html=True)
         st.markdown('***')
 
-        num_dates = st.slider('Número de Dias para Prever', min_value=1, max_value=90, value=7)
-        best_model_mstl = best_model.mstl(train, num_dates)
+        num_dates = st.slider('Número de Dias para Prever', min_value=1, max_value=180, value=7)
+        best_model_mstl = best_model.mstl(train, test, valid, num_dates)
         st.plotly_chart(best_model_mstl, style = style, use_container_width=True)
 
-        best_model = best_model.seas_es_opt(train, num_dates)
+        best_model = best_model.seas_es_opt(train, test, valid, num_dates)
         st.plotly_chart(best_model, style = style, use_container_width=True)
 
         st.markdown("***")
@@ -705,7 +715,8 @@ def main():
         st.markdown("""
                     <p style='text-align: center; font-size: 18px;'>
                     Convertemos todas as funções desenvolvidas durante o projeto em classes. Essa abordagem torna o código mais 
-                    modular, facilitando a manutenção e a reutilização de componentes.
+                    modular, facilitando a manutenção e a reutilização de componentes. Incluindo a automação da extração dos dados 
+                    do site da IPEA.
                     </br>
                     """, 
                     unsafe_allow_html=True
