@@ -637,89 +637,99 @@ def main():
 
     if user_menu == 'Resultados':
         pass
-        # MSTL_forecast = MSTL_model.predict(h=30, level=[95])
-        # MSTL_forecast = MSTL_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
-        # # MSTL_forecast.dropna(inplace=True)
+        st.markdown("<h3 style='text-align:center; width: 100%;'>Resultado do Challenge</h3>", unsafe_allow_html=True)
+        st.markdown('***')
 
-        # SeasESOpt_forecast = SeasESOpt_model.predict(h=30, level=[95])
-        # SeasESOpt_forecast = SeasESOpt_forecast.reset_index().merge(test[['ds', 'y', 'unique_id']], on=['ds', 'unique_id'], how='left')
-        # # SeasESOpt_forecast.dropna(inplace=True)
-
-        # fig = go.Figure()
-        # fig.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL'], mode='lines', name='Previsão MSTL', line=dict(color='rgba(0, 255, 255, 0.8)')))
-        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-lo-95'], mode='lines', name='Limite Inferior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
-        # fig.add_trace(go.Scatter(x=MSTL_forecast['ds'], y=MSTL_forecast['MSTL-hi-95'], mode='lines', name='Limite Superior (95%)', line=dict(color='rgba(255, 0, 255, 0.8)')))
-        # fig.update_layout(
-        #     xaxis_title='Data',
-        #     legend=dict(x=0, y=1),
-        #     xaxis=dict(tickformat='%Y-%m-%d')
-        # )
-        # fig.add_shape(
-        #     type='line',
-        #     x0='2023-11-01',
-        #     x1='2023-11-01',
-        #     y0=10,
-        #     y1=140,
-        #     line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
-        # )
-        # fig.add_annotation(
-        #     x='2023-11-01',
-        #     y=110,
-        #     text='First Forecast',
-        #     showarrow=False
-        # )
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=MSTL_forecast['ds'],
-        #         y=MSTL_forecast['MSTL-lo-95'],
-        #         mode='lines',
-        #         fill='tonexty',
-        #         fillcolor='rgba(255, 0, 255, 0.1)',
-        #         line=dict(width=0),
-        #         showlegend=False
-        #     )
-        # )
-        # # fig.update_yaxes(range=[-0.05, 0.05])
-        # fig.update_xaxes(
-        #     range=['2020-01-01', MSTL_forecast['ds'].max()]
-        # )
-        # st.plotly_chart(fig, style = style, use_container_width=True)
-
-        # fig2 = go.Figure()
-        # fig2.add_trace(go.Scatter(x=train['ds'], y=train['y'], mode='lines', name='Dados de Treinamento (1987-05-20 - 2023-11-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['y'], mode='lines', name='Dados de Teste (2023-11-01 - 2023-12-01)', line=dict(color='rgba(0, 255, 0, 0.8)')))
-        # fig2.add_trace(go.Scatter(x=SeasESOpt_forecast['ds'], y=SeasESOpt_forecast['SeasESOpt'], mode='lines', name='Previsão SeasESOpt', line=dict(color='rgba(0, 255, 255, 0.8)')))
-        # fig2.update_layout(
-        #     xaxis_title='Data',
-        #     legend=dict(x=0, y=1),
-        #     xaxis=dict(tickformat='%Y-%m-%d')
-        # )
-        # fig2.add_shape(
-        #     type='line',
-        #     x0='2023-11-01',
-        #     x1='2023-11-01',
-        #     y0=10,
-        #     y1=140,
-        #     line=dict(color='rgba(255, 255, 0, 0.8)', dash='dash')
-        # )
-        # fig2.add_annotation(
-        #     x='2023-11-01',
-        #     y=100,
-        #     text='First Forecast',
-        #     showarrow=False
-        # )
-        # # fig2.update_yaxes(range=[65, 105])
-        # fig2.update_xaxes(
-        #     range=['2020-01-01', SeasESOpt_forecast['ds'].max()]
-        # )
-        num_dates = st.slider('Número de Dias para Previsão', min_value=1, max_value=90, value=7)
+        num_dates = st.slider('Número de Dias para Prever', min_value=1, max_value=90, value=7)
         best_model_mstl = best_model.mstl(train, num_dates)
         st.plotly_chart(best_model_mstl, style = style, use_container_width=True)
 
         best_model = best_model.seas_es_opt(train, num_dates)
         st.plotly_chart(best_model, style = style, use_container_width=True)
+
+        st.markdown("***")
+        
+        st.markdown("<h4 style='text-align:center; width: 100%;'>Desenvolvimento do Modelo de Previsão do Preço do Barril de Petróleo Brent</h4>", unsafe_allow_html=True)
+
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Durante o processo de desenvolvimento do modelo de previsão do preço do barril de petróleo Brent, adotamos
+                    uma abordagem estruturada e eficiente, utilizando diversas ferramentas e boas práticas.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>1. Escolha da Biblioteca e Modelagem</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Optamos pela biblioteca Statsforecast para a construção de dois modelos de previsão. Essa escolha foi 
+                    baseada no desempenho e eficácia dessa ferramenta nas previsões temporais dos dados apresentados.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>2. Controle de Versão com GitHub</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Para garantir o versionamento do código e facilitar a colaboração, utilizamos o GitHub. Essa plataforma
+                    possibilitou um ambiente colaborativo, permitindo o acompanhamento das alterações e a fácil reversão em caso
+                    de necessidade.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>3. Implementação de Modelos Treinados</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Utilizamos a biblioteca Joblib para transformar os modelos treinados em arquivos binários. Essa abordagem
+                    facilita a integração dos modelos no código, proporcionando eficiência na manipulação e execução.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>4. Disponibilização de Resultados com Streamlit Cloud</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Para disponibilizar os resultados de maneira acessível, escolhemos o Streamlit Cloud. Essa plataforma oferece 
+                    uma interface amigável e possibilita compartilhar visualizações interativas dos modelos de previsão.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>5. Estruturação do Código em Classes</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Convertemos todas as funções desenvolvidas durante o projeto em classes. Essa abordagem torna o código mais 
+                    modular, facilitando a manutenção e a reutilização de componentes.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("<h5 style='text-align:center; width: 100%;'>6. Automação de Entradas de Dados e Armazenamento Eficiente</h5>", unsafe_allow_html=True)
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Automatizamos o processo de entrada de dados e a separação de datasets, armazenando-os em formato Parquet.
+                    Essa escolha visa otimizar o desempenho do sistema, garantindo eficiência no processamento de grandes conjuntos de dados.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
+
+        st.markdown("""
+                    <p style='text-align: center; font-size: 18px;'>
+                    Com a aplicação dessas práticas e ferramentas, o trabalho se tornou mais escalável, fácil de manter e oferece 
+                    resultados precisos na previsão do preço do barril de petróleo Brent. O deploy em produção foi realizado de 
+                    forma eficiente, garantindo a acessibilidade e usabilidade dos modelos desenvolvidos.
+                    </br>
+                    """, 
+                    unsafe_allow_html=True
+                )
                 
 if __name__ == "__main__":
     main()

@@ -447,7 +447,7 @@ class Models:
                 showlegend=False
             )
         )
-       
+        fig1.update_yaxes(range=[50, 120])
         
         return fig, erro.wmape(MSTL_forecast['y'].values, MSTL_forecast['MSTL'].values), fig1, erro.wmape(MSTL_forecast_valid['y'].values, MSTL_forecast_valid['MSTL'].values)
     
@@ -500,6 +500,7 @@ class Models:
             legend=dict(x=0, y=1),
             xaxis=dict(tickformat='%Y-%m-%d')
         )
+        fig3.update_yaxes(range=[60, 90])
 
         return fig2, erro.wmape(SeasESOpt_forecast['y'].values, SeasESOpt_forecast['SeasESOpt'].values), fig3, erro.wmape(SeasESOpt_forecast_valid['y'].values, SeasESOpt_forecast_valid['SeasESOpt'].values)
     
