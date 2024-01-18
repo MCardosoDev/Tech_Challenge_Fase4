@@ -29,7 +29,7 @@ def main():
             'Transformação da Série',
             'Análise de Autocorrelação',
             'Avaliação dos Modelos',
-            'Melhores Models',
+            'Melhores Modelos',
             'Resultados'
         )
     )
@@ -71,11 +71,10 @@ def main():
         st.markdown('***')
         st.markdown("""
                         <p style='text-align: center; font-size: 18px;'>
-                            O desafio proposto é analisar os dados do preço por barril do petróleo bruto Brent (FOB).
-                            Desenvolver um dashboard interativo, contendo insights que influenciaram em algum ponto nas alterações e variações dos preços.
-                            Tudo seguindo um storytelling para situar o leitor.
-                            Construir um modelo de machine learning para prever o preço do barril de petróleo diariamente (Série Temporal).
-                            Assim como por fim um planejamento para fazer o deploy do modelo em um ambiente de produção.
+                            O desafio proposto é, analisar os dados do preço por barril do petróleo bruto Brent (FOB), 
+                            desenvolver um dashboard interativo contendo insights que influenciaram alterações e variações dos preços, 
+                            seguir um storytelling para situar o leitor e construir um modelo de machine learning para prever o preço do barril de petróleo diariamente (Série Temporal).
+                            Para concluir, um planejamento para fazer o deploy do modelo em um ambiente de produção.
                         </p>
                     """, 
                         unsafe_allow_html=True
@@ -87,8 +86,10 @@ def main():
                         <p style='text-align: center; font-size: 18px;'>
                             <em>Análise dos dados históricos do IPEA</em> - Os dados sobre o histórico do preço por barril do petróleo bruto Brent (FOB) fornecido diariamente 
                             no site retirados da fonte: Energy Information Administration (EIA) com os valores em US$
+                            Os dados do preço por barril do petróleo bruto Brent FOB (Free On Board) é coletado diariamente na fonte: <a href='https://www.eia.gov/'>Energy Information Administration (EIA)</a>
+                            com os valores em US$
                             <br><br>
-                            - Link: <a href='http://www.ipeadata.gov.br/ExibeSerie.aspx?module=m&serid=1650971490&oper=view'>Dados Históricos - IPEA</a>
+                            - Link: <a href='http://www.ipeadata.gov.br/ExibeSerie.aspx?module=m&serid=1650971490&oper=view'>Os dados da série histórica de preço foram coletados no site da IPEA</a>
                         </p>
                     """, 
                         unsafe_allow_html=True
@@ -238,12 +239,13 @@ def main():
         st.markdown('***')
         st.markdown("""
                         <p style='text-align: center; font-size: 18px;'>
-                        Ao analisar tanto a série temporal quanto a série decomposta nota-se alguns pontos bem claros que dev ser investigados.
-                        Nota-se que algum evento influenciou uma forte alteração de aumento e queda do preço em 1990, em 2001 e 
-                        2008 ocorreu um aumento disproportion assim como um quede forte no mesmo ano, em 2014 ouve mais uma queda até 2016 e outra grande queda em 2020 com um grande aumente em 2022.
+                        Ao analisar tanto a série temporal quanto a série decomposta, nota-se alguns pontos bem claros que devem ser investigados. 
+                        Nota-se que algum evento influenciou um forte aumento e queda do preço em, 1990, 2001 e 2008. 
+                        Ocorreu um aumento desproporcional e também uma forte queda no mesmo ano em 2014, 
+                        houveram outras duas quedas em 2016 e 2020 com um grande aumento em 2022.
                         <br><br>
-                        Ao olhar a série decomposta obtém-se mais alguma informações, nota-se que a linha de tendência seguem a série apenas suavizando-a, sem dar mais informações, 
-                        a série tem uma sazonalidade anual observada e pelo ruido nota-se que as maiores variações ocorreram entre 2008 - 2009 e em 2020.
+                        Analisando a série decomposta nota-se que, a linha de tendência segue a série apenas suavizando-a, sem dar mais informações. 
+                        A série tem uma sazonalidade anual observada e pelo ruído nota-se que as maiores variações ocorreram entre 2008 e 2009 e em 2020.
                         </p>
                     """, 
                         unsafe_allow_html=True
@@ -590,7 +592,7 @@ def main():
                     unsafe_allow_html=True
                 )
 
-    if user_menu == 'Melhores Models':
+    if user_menu == 'Melhores Modelos':
         pass
         st.markdown("<h3 style='text-align:center; width: 100%;'>Modelos com melhores desempenhos</h3>", unsafe_allow_html=True)
         st.markdown("""
